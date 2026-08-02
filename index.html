@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DAT mNAV 대시보드</title>
+<style>
+  :root { color-scheme: light dark; }
+  .viz-root {
+    --surface-1: #fcfcfb; --surface-2: #f0efec;
+    --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #7a7974;
+    --border: #e2e1dd; --accent: #2a78d6; --bar-fill: #2a78d6;
+    --good: #0ca30c; --serious: #ec835a; --critical: #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    .viz-root {
+      --surface-1: #1a1a19; --surface-2: #262625;
+      --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #8f8e86;
+      --border: #383835; --accent: #3987e5; --bar-fill: #3987e5;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--surface-1); }
+  .viz-root {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Pretendard", "Malgun Gothic", sans-serif;
+    background: var(--surface-1); color: var(--text-primary);
+    min-height: 100vh; padding: 14px 12px 28px; width: 100%;
+  }
+  h1 { font-size: 17px; font-weight: 700; }
+  .sub { color: var(--text-secondary); font-size: 12px; margin-top: 3px; line-height: 1.5; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+  button {
+    background: var(--accent); color: #fff; border: none; border-radius: 6px;
+    padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  button.ghost { background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--border); }
+  .status { font-size: 11px; color: var(--text-muted); }
+  .scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 520px; }
+  th {
+    text-align: right; color: var(--text-secondary); font-weight: 600; font-size: 11px;
+    padding: 6px 7px; border-bottom: 1px solid var(--border); white-space: nowrap;
+    position: sticky; top: 0; background: var(--surface-1);
+  }
+  th:first-child, td:first-child { text-align: left; }
+  td { padding: 8px 7px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  tr:hover td { background: var(--surface-2); }
+  .co { font-weight: 650; font-size: 12.5px; }
+  .tk { color: var(--text-muted); font-size: 10.5px; }
+  .coin-chip { display: inline-block; font-size: 10.5px; color: var(--text-secondary); background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 1px 7px; }
+  .mnav { font-weight: 700; font-size: 13px; }
+  .mnav.low { color: var(--good); }
+  .mnav.mid { color: var(--text-primary); }
+  .mnav.high { color: var(--serious); }
+  .mnav.vhigh { color: var(--critical); }
+  .barwrap { position: relative; width: 84px; height: 7px; background: var(--surface-2); border-radius: 4px; display: inline-block; vertical-align: middle; }
+  .bar { position: absolute; left: 0; top: 0; height: 7px; border-radius: 4px; background: var(--bar-fill); }
+  .parity { position: absolute; top: -3px; height: 13px; width: 2px; background: var(--text-muted); }
+  .editable { background: transparent; border: 1px dashed var(--border); color: var(--text-primary); width: 84px; text-align: right; border-radius: 4px; padding: 2px 4px; font-size: 11.5px; }
+  .note { margin-top: 12px; font-size: 11.5px; color: var(--text-muted); line-height: 1.7; }
+  .live { color: var(--good); }
+  /* 좁은 패널: 보조 열 숨김 → 잘림 방지 */
+  @media (max-width: 680px) {
+    .opt { display: none; }
+    table { min-width: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="viz-root">
+  <h1>DAT mNAV 대시보드</h1>
+  <div class="sub">디지털자산 트레저리 기업 시총 ÷ 보유코인 가치. 코인 시세·주가 자동 갱신 · 보유량은 매주 월요일 공시 기준 자동 갱신(기준일 <span id="asof"></span>) — 할 일 없음.
+    창이 좁으면 보조 열은 자동으로 숨고, 표는 좌우 스크롤 가능.</div>
+
+  <div class="toolbar">
+    <button onclick="refreshAll()">지금 새로고침</button>
+    <button class="ghost" onclick="toggleEdit()">보유량 수정</button>
+    <span class="status" id="status">여는 중…</span>
+  </div>
+
+  <div class="scroll">
+  <table>
+    <thead><tr>
+      <th>회사</th><th class="opt">보유량</th><th class="opt">NAV</th>
+      <th>주가</th><th class="opt">시총</th><th>mNAV</th><th></th>
+    </tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  </div>
+
+  <div class="note" id="legend">
+    mNAV 1.0(막대 세로선) = 주가와 보유자산 가치가 같음 · <span style="color:var(--good)">1 미만 = 자산보다 싸게 거래</span> ·
+    <span style="color:var(--serious)">1.5↑ 과열</span> · <span style="color:var(--critical)">2.0↑ 위험</span><br>
+    코인 시세: CoinGecko 60초 자동 / 주가: 공개 시세 소스 5분 자동 (실패 시 7/17 종가 유지, 상태줄에 표시) /
+    보유 코인 수량: 매주 월요일 아침 공시 조사로 자동 갱신 (기준일은 상단 표시) — 급하면 "보유량 수정"으로 즉시 수기 반영 가능.<br>
+    <b>† 조정 mNAV:</b> 전환사채·우선주 등 선순위 자본을 NAV에서 차감하고 현금을 가산한 보통주 몫 기준
+    (MSTR: 전환사채 $6.7B + 우선주 $15.5B − 현금 $0.87B, 2026-05-26 공시). † 없는 종목은 선순위 자본이 미미해 순수 코인 NAV 기준.
+  </div>
+</div>
+
+<script>
+// ===HOLDINGS-START=== (매주 월요일 클라우드 Claude가 공시 조사 후 이 구역만 갱신 — 형식·키 이름 유지)
+const DATA_ASOF = "2026-07-27";  // 보유량 공시 확인 기준일
+// 종가 스냅샷은 열자마자 표시용 초기값 — 이후 자동 갱신됨
+const COMPANIES = [
+  // senior = 전환사채 $6.7B + 우선주 노셔널 $15.5B (2026-05-26 회사 공시), cash = USD 준비금
+  { t:"MSTR",  name:"MicroStrategy (Strategy)", coin:"BTC", cg:"bitcoin",     hold:843775,   price:94.85, shares:356.42e6, senior:22.2e9, cash:0.871e9 },
+  { t:"BMNR",  name:"BitMine Immersion",        coin:"ETH", cg:"ethereum",    hold:5742237,  price:15.68, shares:603.23e6 },
+  { t:"SBET",  name:"SharpLink",                coin:"ETH", cg:"ethereum",    hold:868699,   price:5.67,  shares:195.08e6 },
+  { t:"PURR",  name:"Hyperliquid Strategies",   coin:"HYPE",cg:"hyperliquid", hold:16890000, price:6.68,  shares:134.62e6 },
+  { t:"XXI",   name:"Twenty One Capital",       coin:"BTC", cg:"bitcoin",     hold:43514,    price:5.12,  shares:346.81e6 },
+  { t:"MTPLF", name:"Metaplanet (OTC)",         coin:"BTC", cg:"bitcoin",     hold:43000,    price:1.86,  shares:1322e6 },
+  { t:"FWDI",  name:"Forward Industries",       coin:"SOL", cg:"solana",      hold:7013536,  price:4.275, shares:73.75e6 },
+  { t:"HSDT",  name:"Solana Company",           coin:"SOL", cg:"solana",      hold:2064717,  price:1.73,  shares:58.39e6 },
+  { t:"DFDV",  name:"DeFi Development Corp",    coin:"SOL", cg:"solana",      hold:2223074,  price:3.16,  shares:30.12e6 },
+  { t:"UPXI",  name:"Upexi",                    coin:"SOL", cg:"solana",      hold:2173204,  price:0.87,  shares:70.26e6 },
+];
+const coinPrices = { bitcoin:63602, ethereum:1676, solana:76.8, hyperliquid:66.2 }; // 초기값 → 즉시 자동 갱신
+// ===HOLDINGS-END===
+let editMode = false, liveStocks = 0;
+
+const $ = id => document.getElementById(id);
+const fmt = (n,d=2) => n==null||isNaN(n) ? "—" : n.toLocaleString("en-US",{maximumFractionDigits:d});
+const fmtB = n => n==null||isNaN(n) ? "—" : n>=1e9 ? "$"+(n/1e9).toFixed(2)+"B" : "$"+(n/1e6).toFixed(0)+"M";
+const mnavClass = m => m==null ? "" : m<1 ? "low" : m<1.5 ? "mid" : m<2 ? "high" : "vhigh";
+
+const GROUPS = [
+  { coin:"BTC",  cg:"bitcoin" },
+  { coin:"ETH",  cg:"ethereum" },
+  { coin:"SOL",  cg:"solana" },
+  { coin:"HYPE", cg:"hyperliquid" },
+];
+
+function render(){
+  const body = $("rows"); body.innerHTML = "";
+  for (const g of GROUPS){
+    const rows = COMPANIES.filter(c=>c.coin===g.coin).map(c => {
+      const nav = c.hold * coinPrices[c.cg];               // 순수 코인 NAV
+      const adjNav = nav + (c.cash||0) - (c.senior||0);    // 선순위(부채+우선주) 차감, 현금 가산
+      const mcap = c.price * c.shares;
+      return { c, nav, adjNav, mcap, mnav: mcap/adjNav, rawMnav: mcap/nav };
+    }).sort((a,b)=>b.nav-a.nav); // 그룹 내 보유량(NAV) 큰 순
+    if (!rows.length) continue;
+
+    const sumNav = rows.reduce((s,r)=>s+r.adjNav,0);
+    const sumMcap = rows.reduce((s,r)=>s+r.mcap,0);
+    const gm = sumMcap/sumNav;
+    const gtr = document.createElement("tr");
+    gtr.innerHTML = `
+      <td style="background:var(--surface-2);font-weight:700;padding-top:10px">
+        <span class="coin-chip" style="font-weight:700">${g.coin}</span>
+        <span class="tk" style="margin-left:6px">$${fmt(coinPrices[g.cg])}</span></td>
+      <td class="opt" style="background:var(--surface-2)"></td>
+      <td class="opt" style="background:var(--surface-2);color:var(--text-secondary)">${fmtB(sumNav)}</td>
+      <td style="background:var(--surface-2)"></td>
+      <td class="opt" style="background:var(--surface-2);color:var(--text-secondary)">${fmtB(sumMcap)}</td>
+      <td style="background:var(--surface-2)" class="mnav ${mnavClass(gm)}">${gm.toFixed(2)}x</td>
+      <td style="background:var(--surface-2);color:var(--text-muted);font-size:10.5px">그룹 평균</td>`;
+    body.appendChild(gtr);
+
+    for (const r of rows){
+      const c = r.c, barW = Math.min(r.mnav/3,1)*84;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td style="padding-left:18px"><div class="co">${c.name}</div>
+          <div class="tk">${c.t} · ${c.live?'<span class="live">실시간</span>':'종가'}${c.senior?` · <span style="color:var(--accent)">선순위 ${fmtB(c.senior)} 차감조정 (단순 ${r.rawMnav.toFixed(2)}x)</span>`:''}${c.warn?` · <span style="color:var(--serious)">⚠ ${c.warn}</span>`:''}</div></td>
+        <td class="opt">${editMode ? `<input class="editable" value="${c.hold}" onchange="upd('${c.t}',this.value)">` : fmt(c.hold,0)}</td>
+        <td class="opt">${fmtB(r.adjNav)}</td>
+        <td>$${fmt(c.price)}</td>
+        <td class="opt">${fmtB(r.mcap)}</td>
+        <td class="mnav ${mnavClass(r.mnav)}">${r.mnav.toFixed(2)}x${c.senior?'<span style="font-size:9px;vertical-align:super">†</span>':''}</td>
+        <td><span class="barwrap"><span class="bar" style="width:${barW}px"></span><span class="parity" style="left:28px"></span></span></td>`;
+      body.appendChild(tr);
+    }
+  }
+}
+function upd(t,v){ const c=COMPANIES.find(x=>x.t===t); const n=parseFloat(String(v).replace(/,/g,"")); if(!isNaN(n)) c.hold=n; render(); }
+function toggleEdit(){ editMode=!editMode; render(); }
+
+// ── 코인 시세: ① Binance ② Hyperliquid 공식 API ③ CoinGecko 폴백 ──
+let coinSrc = "내장값";
+async function fetchWithTimeout(url, opts, ms=8000){
+  const ctrl = new AbortController(); const t = setTimeout(()=>ctrl.abort(), ms);
+  try { return await fetch(url, {...opts, signal: ctrl.signal}); } finally { clearTimeout(t); }
+}
+async function fetchCoins(){
+  let ok = false;
+  try{ // BTC/ETH/SOL — Binance 공개 API (CORS 허용, 진짜 실시간)
+    const syms = {bitcoin:"BTCUSDT", ethereum:"ETHUSDT", solana:"SOLUSDT"};
+    const rs = await Promise.all(Object.entries(syms).map(async ([id,s])=>{
+      const j = await (await fetchWithTimeout(`https://api.binance.com/api/v3/ticker/price?symbol=${s}`)).json();
+      return [id, parseFloat(j.price)];
+    }));
+    rs.forEach(([id,p])=>{ if(p>0){ coinPrices[id]=p; ok=true; } });
+    if(ok) coinSrc = "Binance";
+  }catch(e){}
+  try{ // HYPE — 하이퍼리퀴드 공식 API
+    const j = await (await fetchWithTimeout("https://api.hyperliquid.xyz/info",
+      {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({type:"allMids"})})).json();
+    const p = parseFloat(j["HYPE"]);
+    if(p>0){ coinPrices.hyperliquid = p; ok = true; }
+  }catch(e){}
+  if(!ok) try{ // 전부 실패 시 CoinGecko 폴백
+    const ids=[...new Set(COMPANIES.map(c=>c.cg))].join(",");
+    const j=await (await fetchWithTimeout(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`)).json();
+    for(const id in j){ coinPrices[id]=j[id].usd; ok=true; }
+    if(ok) coinSrc = "CoinGecko";
+  }catch(e){}
+  return ok;
+}
+
+// ── 주가: 중계 서버 3곳 자동 로테이션 × 소스 2곳(stooq, yahoo) ──
+const PROXIES = [
+  u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+  u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+];
+const PROXY_NAMES = ["corsproxy","codetabs","allorigins"];
+let goodProxy = null;
+
+async function viaProxy(url, parse){
+  const order = goodProxy!=null ? [goodProxy, ...PROXIES.map((_,i)=>i).filter(i=>i!==goodProxy)] : PROXIES.map((_,i)=>i);
+  for(const i of order){
+    try{
+      const res = await fetchWithTimeout(PROXIES[i](url));
+      const p = await parse(res);
+      if(p>0){ goodProxy = i; return p; }
+    }catch(e){}
+  }
+  return null;
+}
+
+async function stockPrice(t){
+  let p = await viaProxy(`https://stooq.com/q/l/?s=${t.toLowerCase()}.us&f=sd2t2ohlcv&h&e=csv`,
+    async r => parseFloat((await r.text()).split("\n")[1]?.split(",")[6]));
+  if(p) return p;
+  return await viaProxy(`https://query1.finance.yahoo.com/v8/finance/chart/${t}?range=1d&interval=1d`,
+    async r => { const j = await r.json(); return j?.chart?.result?.[0]?.meta?.regularMarketPrice; });
+}
+
+async function fetchStocks(){
+  for(const c of COMPANIES){ // 순차 호출 — 중계 서버 과부하 방지
+    const p = await stockPrice(c.t);
+    if(p){ c.price = p; c.live = true; render(); }
+    await new Promise(r=>setTimeout(r,250));
+  }
+  liveStocks = COMPANIES.filter(c=>c.live).length;
+}
+
+async function refreshAll(){
+  $("status").textContent = "갱신 중…";
+  const coinOk = await fetchCoins(); render();
+  $("status").textContent = `코인 시세: ${coinOk?coinSrc+" ✓":"실패"} · 주가 불러오는 중…`;
+  await fetchStocks(); render();
+  const proxyLabel = goodProxy!=null ? PROXY_NAMES[goodProxy] : "실패";
+  if(!coinOk && liveStocks===0){
+    $("status").innerHTML = "<span class='err'>네트워크 요청이 전부 차단됐어요 — 이 파일을 다운로드해 Chrome에서 직접 열면 실시간으로 작동합니다. (지금은 7/17 종가 표시 중)</span>";
+  } else {
+    $("status").textContent = `갱신 ${new Date().toLocaleTimeString("ko-KR")} · 코인 ${coinSrc} · 주가 ${liveStocks}/${COMPANIES.length} (경유: ${proxyLabel})`;
+  }
+}
+
+document.getElementById("asof").textContent = DATA_ASOF;
+render();
+refreshAll();
+setInterval(async()=>{ await fetchCoins(); render(); }, 60000);
+setInterval(async()=>{ await fetchStocks(); render(); }, 300000);
+</script>
+</body>
+</html>
