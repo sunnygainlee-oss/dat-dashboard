@@ -91,6 +91,7 @@
   <div class="note" id="legend">
     mNAV 1.0(막대 세로선) = 주가와 보유자산 가치가 같음 · <span style="color:var(--good)">1 미만 = 자산보다 싸게 거래</span> ·
     <span style="color:var(--serious)">1.5↑ 과열</span> · <span style="color:var(--critical)">2.0↑ 위험</span><br>
+    시총 아래 원화는 실시간 환율(open.er-api.com, 상태줄 표시) 환산 참고값 /
     코인 시세: CoinGecko 60초 자동 / 주가: 공개 시세 소스 5분 자동 (실패 시 7/17 종가 유지, 상태줄에 표시) /
     보유 코인 수량: 매주 월요일 아침 공시 조사로 자동 갱신 (기준일은 상단 표시) — 급하면 "보유량 수정"으로 즉시 수기 반영 가능.<br>
     <b>† 조정 mNAV:</b> 전환사채·우선주 등 선순위 자본을 NAV에서 차감하고 현금을 가산한 보통주 몫 기준
@@ -122,6 +123,10 @@ let editMode = false, liveStocks = 0;
 const $ = id => document.getElementById(id);
 const fmt = (n,d=2) => n==null||isNaN(n) ? "—" : n.toLocaleString("en-US",{maximumFractionDigits:d});
 const fmtB = n => n==null||isNaN(n) ? "—" : n>=1e9 ? "$"+(n/1e9).toFixed(2)+"B" : "$"+(n/1e6).toFixed(0)+"M";
+let usdkrw = 1419, fxLive = false; // USD/KRW — 내장값(2026-08-07) → 로드 시 자동 갱신
+const fmtKRW = n => { if(n==null||isNaN(n)) return "—";
+  const w = n * usdkrw;
+  return w>=1e12 ? "₩"+(w/1e12).toFixed(w>=10e12?1:2)+"조" : "₩"+Math.round(w/1e8).toLocaleString("en-US")+"억"; };
 const mnavClass = m => m==null ? "" : m<1 ? "low" : m<1.5 ? "mid" : m<2 ? "high" : "vhigh";
 
 const GROUPS = [
@@ -153,7 +158,7 @@ function render(){
       <td class="opt" style="background:var(--surface-2)"></td>
       <td class="opt" style="background:var(--surface-2);color:var(--text-secondary)">${fmtB(sumNav)}</td>
       <td style="background:var(--surface-2)"></td>
-      <td class="opt" style="background:var(--surface-2);color:var(--text-secondary)">${fmtB(sumMcap)}</td>
+      <td class="opt" style="background:var(--surface-2);color:var(--text-secondary)">${fmtB(sumMcap)}<div class="tk">${fmtKRW(sumMcap)}</div></td>
       <td style="background:var(--surface-2)" class="mnav ${mnavClass(gm)}">${gm.toFixed(2)}x</td>
       <td style="background:var(--surface-2);color:var(--text-muted);font-size:10.5px">그룹 평균</td>`;
     body.appendChild(gtr);
@@ -167,7 +172,7 @@ function render(){
         <td class="opt">${editMode ? `<input class="editable" value="${c.hold}" onchange="upd('${c.t}',this.value)">` : fmt(c.hold,0)}</td>
         <td class="opt">${fmtB(r.adjNav)}</td>
         <td>$${fmt(c.price)}</td>
-        <td class="opt">${fmtB(r.mcap)}</td>
+        <td class="opt">${fmtB(r.mcap)}<div class="tk">${fmtKRW(r.mcap)}</div></td>
         <td class="mnav ${mnavClass(r.mnav)}">${r.mnav.toFixed(2)}x${c.senior?'<span style="font-size:9px;vertical-align:super">†</span>':''}</td>
         <td><span class="barwrap"><span class="bar" style="width:${barW}px"></span><span class="parity" style="left:28px"></span></span></td>`;
       body.appendChild(tr);
@@ -247,16 +252,26 @@ async function fetchStocks(){
   liveStocks = COMPANIES.filter(c=>c.live).length;
 }
 
+// ── 환율: open.er-api.com 직접 → 실패 시 중계 서버 경유 (실패해도 내장값으로 표시) ──
+async function fetchFx(){
+  try{
+    const j = await (await fetchWithTimeout("https://open.er-api.com/v6/latest/USD")).json();
+    const k = j?.rates?.KRW; if(k>0){ usdkrw = k; fxLive = true; return; }
+  }catch(e){}
+  const k = await viaProxy("https://open.er-api.com/v6/latest/USD", async r => (await r.json())?.rates?.KRW);
+  if(k>0){ usdkrw = k; fxLive = true; }
+}
+
 async function refreshAll(){
   $("status").textContent = "갱신 중…";
-  const coinOk = await fetchCoins(); render();
+  const coinOk = await fetchCoins(); await fetchFx(); render();
   $("status").textContent = `코인 시세: ${coinOk?coinSrc+" ✓":"실패"} · 주가 불러오는 중…`;
   await fetchStocks(); render();
   const proxyLabel = goodProxy!=null ? PROXY_NAMES[goodProxy] : "실패";
   if(!coinOk && liveStocks===0){
     $("status").innerHTML = "<span class='err'>네트워크 요청이 전부 차단됐어요 — 이 파일을 다운로드해 Chrome에서 직접 열면 실시간으로 작동합니다. (지금은 7/17 종가 표시 중)</span>";
   } else {
-    $("status").textContent = `갱신 ${new Date().toLocaleTimeString("ko-KR")} · 코인 ${coinSrc} · 주가 ${liveStocks}/${COMPANIES.length} (경유: ${proxyLabel})`;
+    $("status").textContent = `갱신 ${new Date().toLocaleTimeString("ko-KR")} · 코인 ${coinSrc} · 주가 ${liveStocks}/${COMPANIES.length} (경유: ${proxyLabel}) · 환율 ₩${fmt(usdkrw,0)}${fxLive?"":" (내장값)"}`;
   }
 }
 
