@@ -113,7 +113,8 @@ const COMPANIES = [
   { t:"MSTR",  name:"MicroStrategy (Strategy)", coin:"BTC", cg:"bitcoin",     hold:843775,   price:93.28, shares:384.58e6, senior:22.17e9, cash:3.75e9 },
   { t:"BMNR",  name:"BitMine Immersion",        coin:"ETH", cg:"ethereum",    hold:5797813,  price:17.28, shares:603.23e6 },
   { t:"SBET",  name:"SharpLink",                coin:"ETH", cg:"ethereum",    hold:887673,   price:6.12,  shares:195.08e6, warn:"8개월 매집 중단 후 6월 재개 · 유동성 낮음" },
-  { t:"PURR",  name:"Hyperliquid Strategies",   coin:"HYPE",cg:"hyperliquid", hold:17600000, price:6.21,  shares:134.62e6 },
+  // PURR는 회사 공시 방법론: 보유량·현금은 hypestrat.xyz/The Block 확인값(CoinGecko는 2월 이후 미갱신), shares는 완전희석(보통주+전환우선주 ITM+워런트), senior는 이연법인세(평가익에 대한 세금 부채)
+  { t:"PURR",  name:"Hyperliquid Strategies",   coin:"HYPE",cg:"hyperliquid", hold:23700000, price:6.21,  shares:210.5e6, senior:194e6, cash:157.2e6 },
   // warn 필드 = 할인 사유 한 줄 요약(주간 갱신 시 유지하되 상황 변하면 수정)
   { t:"XXI",   name:"Twenty One Capital",       coin:"BTC", cg:"bitcoin",     hold:43514,    price:4.35,  shares:346.81e6, senior:486.5e6, cash:114e6, warn:"1년째 매집 중단 · Tether 지배(소액주주 의결권 없음)" },
   { t:"MTPLF", name:"Metaplanet (OTC)",         coin:"BTC", cg:"bitcoin",     hold:43000,    price:1.47,  shares:1322e6, warn:"1년새 주식수 2배 희석 · 워런트 오버행 ~9,470만주" },
