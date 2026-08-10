@@ -105,25 +105,25 @@
 
 <script>
 // ===HOLDINGS-START=== (매주 월요일 클라우드 Claude가 공시 조사 후 이 구역만 갱신 — 형식·키 이름 유지)
-const DATA_ASOF = "2026-08-03";  // 보유량 공시 확인 기준일
+const DATA_ASOF = "2026-08-10";  // 보유량 공시 확인 기준일
 // 종가 스냅샷은 열자마자 표시용 초기값 — 이후 자동 갱신됨
 const COMPANIES = [
   // senior = 보통주보다 선순위인 자본(전환사채·우선주·담보대출 등), cash = 현금성 자산. 출처: 각사 최신 10-Q/실적발표
-  // MSTR(2026-07-26): 전환사채 $6.71B + 우선주 $15.46B / 현금 $3.75B · DFDV(3/31): 전환사채 $128M + SOL담보대출 $83M · UPXI(3/31, 6월 출자전환 반영): 전환사채 $181M + 단기부채 ~$38M · FWDI(3/31): Galaxy 대출 $40M + 디지털자산 차입 $10M
-  { t:"MSTR",  name:"MicroStrategy (Strategy)", coin:"BTC", cg:"bitcoin",     hold:843775,   price:93.28, shares:384.58e6, senior:22.17e9, cash:3.75e9 },
-  { t:"BMNR",  name:"BitMine Immersion",        coin:"ETH", cg:"ethereum",    hold:5797813,  price:17.28, shares:603.23e6 },
-  { t:"SBET",  name:"SharpLink",                coin:"ETH", cg:"ethereum",    hold:887673,   price:6.12,  shares:195.08e6, warn:"8개월 매집 중단 후 6월 재개 · 유동성 낮음" },
+  // MSTR(2026-08-02 8-K): 전환사채 $6.71B + 우선주 ~$15.37B(STRC 912,143주 환매 반영) / 현금 $4.0B · DFDV(3/31): 전환사채 $128M + SOL담보대출 $83M · UPXI(3/31, 6월 출자전환 반영): 전환사채 $181M + 단기부채 ~$38M · FWDI(3/31): Galaxy 대출 $40M + 디지털자산 차입 $10M
+  { t:"MSTR",  name:"MicroStrategy (Strategy)", coin:"BTC", cg:"bitcoin",     hold:842138,   price:100.01, shares:384.23e6, senior:22.08e9, cash:4.0e9 },
+  { t:"BMNR",  name:"BitMine Immersion",        coin:"ETH", cg:"ethereum",    hold:5797813,  price:18.82, shares:603.23e6 },
+  { t:"SBET",  name:"SharpLink",                coin:"ETH", cg:"ethereum",    hold:887673,   price:6.43,  shares:195.08e6, warn:"8개월 매집 중단 후 6월 재개 · 유동성 낮음" },
   // PURR는 회사 공시 방법론: 보유량·현금은 hypestrat.xyz/The Block 확인값(CoinGecko는 2월 이후 미갱신), shares는 완전희석(보통주+전환우선주 ITM+워런트), senior는 이연법인세(평가익에 대한 세금 부채)
-  { t:"PURR",  name:"Hyperliquid Strategies",   coin:"HYPE",cg:"hyperliquid", hold:23700000, price:6.21,  shares:210.5e6, senior:194e6, cash:157.2e6 },
+  { t:"PURR",  name:"Hyperliquid Strategies",   coin:"HYPE",cg:"hyperliquid", hold:23700000, price:6.81,  shares:210.5e6, senior:194e6, cash:157.2e6 },
   // warn 필드 = 할인 사유 한 줄 요약(주간 갱신 시 유지하되 상황 변하면 수정)
-  { t:"XXI",   name:"Twenty One Capital",       coin:"BTC", cg:"bitcoin",     hold:43514,    price:4.35,  shares:346.81e6, senior:486.5e6, cash:114e6, warn:"1년째 매집 중단 · Tether 지배(소액주주 의결권 없음)" },
+  { t:"XXI",   name:"Twenty One Capital",       coin:"BTC", cg:"bitcoin",     hold:43514,    price:4.54,  shares:346.81e6, senior:486.5e6, cash:114e6, warn:"1년째 매집 중단 · Tether 지배(소액주주 의결권 없음)" },
   { t:"MTPLF", name:"Metaplanet (OTC)",         coin:"BTC", cg:"bitcoin",     hold:43000,    price:1.47,  shares:1322e6, warn:"1년새 주식수 2배 희석 · 워런트 오버행 ~9,470만주" },
-  { t:"FWDI",  name:"Forward Industries",       coin:"SOL", cg:"solana",      hold:7013536,  price:4.00,  shares:73.75e6, senior:50e6,  cash:16.6e6 },
-  { t:"HSDT",  name:"Solana Company",           coin:"SOL", cg:"solana",      hold:2064717,  price:1.63,  shares:58.39e6 },
-  { t:"DFDV",  name:"DeFi Development Corp",    coin:"SOL", cg:"solana",      hold:2223074,  price:2.56,  shares:30.12e6, senior:211e6, cash:6.4e6 },
-  { t:"UPXI",  name:"Upexi",                    coin:"SOL", cg:"solana",      hold:2173204,  price:0.79,  shares:70.26e6, senior:219e6, cash:3.5e6 },
+  { t:"FWDI",  name:"Forward Industries",       coin:"SOL", cg:"solana",      hold:7554268,  price:4.33,  shares:73.75e6, senior:50e6,  cash:16.6e6 },
+  { t:"HSDT",  name:"Solana Company",           coin:"SOL", cg:"solana",      hold:2064717,  price:1.69,  shares:58.39e6 },
+  { t:"DFDV",  name:"DeFi Development Corp",    coin:"SOL", cg:"solana",      hold:2223074,  price:2.89,  shares:30.12e6, senior:211e6, cash:6.4e6 },
+  { t:"UPXI",  name:"Upexi",                    coin:"SOL", cg:"solana",      hold:2173204,  price:0.85,  shares:70.26e6, senior:219e6, cash:3.5e6 },
 ];
-const coinPrices = { bitcoin:63602, ethereum:1676, solana:76.8, hyperliquid:66.2 }; // 초기값 → 즉시 자동 갱신
+const coinPrices = { bitcoin:64870, ethereum:1914, solana:77.0, hyperliquid:54.8 }; // 초기값 → 즉시 자동 갱신
 // ===HOLDINGS-END===
 let editMode = false, liveStocks = 0;
 
