@@ -105,26 +105,26 @@
 
 <script>
 // ===HOLDINGS-START=== (매주 월요일 클라우드 Claude가 공시 조사 후 이 구역만 갱신 — 형식·키 이름 유지)
-const DATA_ASOF = "2026-08-17";  // 보유량 공시 확인 기준일
+const DATA_ASOF = "2026-08-24";  // 보유량 공시 확인 기준일
 // 종가 스냅샷은 열자마자 표시용 초기값 — 이후 자동 갱신됨
 const COMPANIES = [
   // senior = 보통주보다 선순위인 자본(전환사채·우선주·담보대출 등), cash = 현금성 자산. 출처: 각사 최신 10-Q/실적발표
-  // MSTR(2026-08-10 8-K): 전환사채 $6.71B + 우선주 ~$15.26B(STRC 추가 1.15M주 ~$115M 환매 반영) / 현금 $4.65B · DFDV(8/12 실적): 전환사채 ~$124.5M(Q2 $3.5M 환매) + SOL담보대출 $83M, 현금은 3/31 값 유지(10-Q 세부 미확인) · UPXI(3/31, 6월 출자전환 반영): 전환사채 $181M + 단기부채 ~$38M · FWDI(6/30 Q3실적): Galaxy 대출 $105M + 디지털자산 차입 $12.5M / 현금 $11.0M
-  { t:"MSTR",  name:"MicroStrategy (Strategy)", coin:"BTC", cg:"bitcoin",     hold:840447,   price:93.04, shares:384.23e6, senior:21.97e9, cash:4.65e9 },
-  { t:"BMNR",  name:"BitMine Immersion",        coin:"ETH", cg:"ethereum",    hold:5805238,  price:18.08, shares:603.23e6 },
-  { t:"SBET",  name:"SharpLink",                coin:"ETH", cg:"ethereum",    hold:888938,   price:6.26,  shares:217.22e6, warn:"8개월 매집 중단 후 6월 재개 · 유동성 낮음" },
-  // PURR는 회사 공시 방법론: 보유량·현금은 hypestrat.xyz/The Block 확인값(CoinGecko는 2월 이후 미갱신), shares는 완전희석(보통주+전환우선주 ITM+워런트), senior는 이연법인세(평가익에 대한 세금 부채)
-  { t:"PURR",  name:"Hyperliquid Strategies",   coin:"HYPE",cg:"hyperliquid", hold:23700000, price:6.68,  shares:210.5e6, senior:194e6, cash:157.2e6 },
+  // MSTR(2026-08-17 8-K): 전환사채 $6.71B + 우선주 ~$15.13B(STRC $132.2M 추가 환매 반영) / 현금 $4.80B(MSTR 주식 매출로 적립) · DFDV(8/12 실적): 전환사채 ~$124.5M(Q2 $3.5M 환매) + SOL담보대출 $83M, 현금은 3/31 값 유지(10-Q 세부 미확인) · UPXI(3/31, 6월 출자전환 반영): 전환사채 $181M + 단기부채 ~$38M · FWDI(6/30 Q3실적): Galaxy 대출 $105M + 디지털자산 차입 $12.5M / 현금 $11.0M
+  { t:"MSTR",  name:"MicroStrategy (Strategy)", coin:"BTC", cg:"bitcoin",     hold:840447,   price:119.25, shares:384.23e6, senior:21.84e9, cash:4.80e9 },
+  { t:"BMNR",  name:"BitMine Immersion",        coin:"ETH", cg:"ethereum",    hold:5815164,  price:22.83, shares:603.23e6 },
+  { t:"SBET",  name:"SharpLink",                coin:"ETH", cg:"ethereum",    hold:888938,   price:7.91,  shares:217.22e6, warn:"8개월 매집 중단 후 6월 재개 · 유동성 낮음" },
+  // PURR 보유량은 DefiLlama/언론 확인값 29.32M(8/20 — ELOC 자금으로 매수 지속, CoinGecko는 2월 이후 미갱신). shares는 완전희석 6월 확인값(ELOC 발행으로 실제는 더 클 수 있음), senior는 이연법인세·cash도 6월 확인값(평가익 증가로 DTL은 실제 더 클 수 있음)
+  { t:"PURR",  name:"Hyperliquid Strategies",   coin:"HYPE",cg:"hyperliquid", hold:29320000, price:10.58, shares:210.5e6, senior:194e6, cash:157.2e6 },
   // warn 필드 = 할인 사유 한 줄 요약(주간 갱신 시 유지하되 상황 변하면 수정)
-  { t:"XXI",   name:"Twenty One Capital",       coin:"BTC", cg:"bitcoin",     hold:43514,    price:4.78,  shares:346.64e6, senior:486.5e6, cash:114e6, warn:"1년째 매집 중단 · Tether 지배(소액주주 의결권 없음)" },
-  { t:"MTPLF", name:"Metaplanet (OTC)",         coin:"BTC", cg:"bitcoin",     hold:43000,    price:1.41,  shares:1322e6, warn:"1년새 주식수 2배 희석 · 워런트 오버행 ~9,470만주" },
-  // FWDI 보유량은 회사 공시 우선(8/3 기준 약 780만 SOL — 분기말 7,552,698 + 이후 ~254,000 매수)
-  { t:"FWDI",  name:"Forward Industries",       coin:"SOL", cg:"solana",      hold:7800000,  price:4.26,  shares:73.85e6, senior:117.5e6, cash:11.0e6 },
-  { t:"HSDT",  name:"Solana Company",           coin:"SOL", cg:"solana",      hold:2064717,  price:1.70,  shares:58.39e6 },
-  { t:"DFDV",  name:"DeFi Development Corp",    coin:"SOL", cg:"solana",      hold:2311523,  price:3.07,  shares:30.12e6, senior:207.5e6, cash:6.4e6 },
-  { t:"UPXI",  name:"Upexi",                    coin:"SOL", cg:"solana",      hold:2173204,  price:0.73,  shares:70.26e6, senior:219e6, cash:3.5e6 },
+  { t:"XXI",   name:"Twenty One Capital",       coin:"BTC", cg:"bitcoin",     hold:43514,    price:6.49,  shares:346.64e6, senior:486.5e6, cash:114e6, warn:"1년째 매집 중단 · Tether 지배(소액주주 의결권 없음)" },
+  { t:"MTPLF", name:"Metaplanet (OTC)",         coin:"BTC", cg:"bitcoin",     hold:43000,    price:1.41,  shares:1322e6, warn:"1년새 주식수 2배 희석 · 워런트 오버행 ~9,470만주 · 2,100 BTC Super League 출자 발표(8/18, 미완결)" },
+  // FWDI 보유량은 회사 공시 우선(트레저리 페이지: 6/30 7,552,698 + 8/3까지 254,325 매수 = 7,807,023)
+  { t:"FWDI",  name:"Forward Industries",       coin:"SOL", cg:"solana",      hold:7807023,  price:5.14,  shares:73.85e6, senior:117.5e6, cash:11.0e6 },
+  { t:"HSDT",  name:"Solana Company",           coin:"SOL", cg:"solana",      hold:2064717,  price:2.10,  shares:58.39e6 },
+  { t:"DFDV",  name:"DeFi Development Corp",    coin:"SOL", cg:"solana",      hold:2311523,  price:3.94,  shares:31.00e6, senior:207.5e6, cash:6.4e6 },
+  { t:"UPXI",  name:"Upexi",                    coin:"SOL", cg:"solana",      hold:2173204,  price:1.08,  shares:70.26e6, senior:219e6, cash:3.5e6 },
 ];
-const coinPrices = { bitcoin:62830, ethereum:1878, solana:76.3, hyperliquid:56.97 }; // 초기값 → 즉시 자동 갱신
+const coinPrices = { bitcoin:77200, ethereum:2431, solana:92.8, hyperliquid:81.0 }; // 초기값 → 즉시 자동 갱신
 // ===HOLDINGS-END===
 let editMode = false, liveStocks = 0;
 
